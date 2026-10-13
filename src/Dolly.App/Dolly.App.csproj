@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Dolly Projector</AssemblyName>
+    <RootNamespace>Dolly.App</RootNamespace><NoWarn>$(NoWarn);WPF0001</NoWarn><UseWindowsForms>true</UseWindowsForms><ApplicationManifest>app.manifest</ApplicationManifest><Version>0.1.0</Version>
+  </PropertyGroup>
+  <ItemGroup><Using Remove="System.Windows.Forms" /><Using Remove="System.Drawing" /><Using Include="System.IO" /><Using Include="System.Linq" /><Using Include="System.Threading.Tasks" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="..\Dolly.Core\Dolly.Core.csproj" /></ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,7 @@
+bin/
+obj/
+out/
+dist/
+vendor/
+*.7z
+.DS_Store
