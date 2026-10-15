@@ -163,7 +163,18 @@ public sealed class Engine
         langPending = it.Kind == "film" && (it.Alang.Length > 0 || it.Slang.Length > 0 || sm == "forced" || sm == "full"); langTries = 0;
         if (start == 0) loopFile = it.Loop != 0;   // un nuovo film parte con la sua ripetizione; una ripresa dopo un blocco mantiene lo stato attuale
         cmds.Add(new object[] { "set_property", "loop-file", start == 0 ? (it.Loop < 0 ? "inf" : it.Loop > 0 ? it.Loop.ToString() : "no") : (loopFile ? "inf" : "no") });
-        object[] ld = start > 0 ? new object[] { "loadfile", it.Path, "replace", -1, "start=" + start.ToString(CultureInfo.InvariantCulture) } : new object[] { "loadfile", it.Path, "replace" };
+        string target = it.Path; var opts = new List<string>();
+        if (Dcp.IsCplPath(it.Path))   // DCP: lista di montaggio con video e audio di tutti i reel, più i sottotitoli di testo
+        {
+            try
+            {
+                var d = Dcp.Prepare(it.Path, Path.Combine(Home, "dcp-cache")); target = d.Edl;
+                if (d.Subs is string sf) opts.Add($"sub-files=%{Encoding.UTF8.GetByteCount(sf)}%{sf}");
+            }
+            catch (Exception ex) { err = ex.Message; U.Log(err); Advance(i); return; }
+        }
+        if (start > 0) opts.Add("start=" + start.ToString(CultureInfo.InvariantCulture));
+        object[] ld = opts.Count == 0 ? new object[] { "loadfile", target, "replace" } : new object[] { "loadfile", target, "replace", -1, string.Join(",", opts) };
         try { cmds.Add(ld); cmds.Add(new object[] { "set_property", "pause", false }); mpv.Ipc(cmds.ToArray(), 2); }
         catch (Exception e) { U.Log("loadfile:", e.Message); return; }
         mode = "playing"; idx = i; sel = i; loadedAt = U.Now; pos = start; dur = 0; err = null;
@@ -550,7 +561,7 @@ public sealed class Engine
                 ["kind"] = i.Kind, ["pre"] = U.J(i.Pre), ["post"] = U.J(i.Post), ["vol"] = U.J(i.Vol), ["alang"] = i.Alang, ["slang"] = i.Slang,
                 ["secs"] = i.Secs, ["text"] = i.Text, ["name"] = i.Title, ["ok"] = i.Kind != "film" || File.Exists(i.Path), ["loop"] = i.Loop, ["split"] = i.Split, ["bg"] = i.Bg, ["bgaudio"] = i.BgAudio, ["submode"] = U.J(i.Submode)
             })),
-            ["presets"] = U.Arr(presets.Select(p => (object?)p)), ["lib"] = U.Arr(Model.VideosIn(Folder).Select(p => (object?)Path.GetFileName(p))), ["saved"] = U.Arr(SavedLists().Select(s => (object?)s)),
+            ["presets"] = U.Arr(presets.Select(p => (object?)p)), ["lib"] = U.Arr(Model.VideosIn(Folder).Select(p => (object?)new Item(p).Title)), ["saved"] = U.Arr(SavedLists().Select(s => (object?)s)),
             ["playing"] = false, ["pause"] = false, ["time"] = 0.0, ["dur"] = 0.0, ["audio"] = new JsonArray(), ["sub"] = new JsonArray(), ["video"] = new JsonArray(), ["chapters"] = new JsonArray(),
             ["chapter"] = null, ["ab"] = new JsonArray(null, null), ["props"] = new JsonObject(), ["adevs"] = new JsonArray(), ["info"] = new JsonObject()
         };

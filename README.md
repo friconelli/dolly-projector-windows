@@ -9,6 +9,9 @@ Versione Windows di [Dolly Projector](https://www.dollyprojector.app): regia di 
 - `src/Dolly.Cli` — avvio senza finestra con `--test-api PORTA`, per i collaudi automatici.
 - `src/Dolly.App` — interfaccia WPF (tema chiaro/scuro di Windows).
 
+## DCP
+Come nella versione Mac, Dolly proietta i DCP non cifrati (Aggiungi → *DCP (cartella)…*): dal CPL costruisce una lista di montaggio per mpv con video e audio di tutti i reel e un SRT con i sottotitoli di testo. Dettagli, limiti e collaudo (`tools/make_test_dcp.py`) nel README di [dolly-projector](https://github.com/friconelli/dolly-projector). Il codice è in `src/Dolly.Core/Dcp.cs`.
+
 ## Compilare
 Serve il .NET SDK 9 (da Mac o Windows; da Mac il progetto WPF si compila grazie a `EnableWindowsTargeting`).
 

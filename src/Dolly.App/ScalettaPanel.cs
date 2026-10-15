@@ -79,6 +79,7 @@ public sealed class ItemRow : Border
         if (it.Post is double b) p.Add(L.Trf("nero dopo %d″", (int)b));
         if (it.Alang.Length > 0 || it.Slang.Length > 0) p.Add((it.Alang.Length == 0 ? "—" : it.Alang) + " → " + (it.Slang.Length == 0 ? "—" : it.Slang));
         if (it.Submode is string m) p.Add(m switch { "file" => L.Tr("sott. del file"), "none" => L.Tr("senza sott."), "forced" => L.Tr("sott. forzati"), "full" => L.Tr("sott. completi"), _ => "" });
+        if (it.Name.EndsWith(".dcp")) p.Add("DCP");
         if (it.Vol is double v) p.Add(L.Trf("vol %d%%", (int)v));
         return string.Join(" · ", p);
     }
@@ -141,6 +142,7 @@ public sealed class ScalettaPanel : Grid
         var m = new ContextMenu { PlacementTarget = at, Placement = PlacementMode.Top };
         m.Items.Add(Mi(L.Tr("Film (mp4, avi, mkv)…"), () => { var p = c.PickFiles(L.Tr("Aggiungi film (mp4, avi, mkv)"), "Film|*.mp4;*.avi;*.mkv"); if (p.Length > 0) c.Cmd("add", ("paths", U.Arr(p))); }));
         m.Items.Add(Mi(L.Tr("Tutti i film di una cartella…"), () => { var p = c.PickFolder(L.Tr("Aggiungi tutti i film di una cartella")); if (p != null) c.Cmd("add", ("paths", U.Arr(new object[] { p }))); }));
+        m.Items.Add(Mi(L.Tr("DCP (cartella)…"), () => { var p = c.PickFolder(L.Tr("Scegli la cartella del DCP")); if (p != null) c.Cmd("add", ("paths", U.Arr(new object[] { p }))); }));
         m.Items.Add(Mi(L.Tr("Tutta la libreria"), () => c.Cmd("addlib"))); m.Items.Add(new Separator());
         m.Items.Add(Mi(L.Tr("Nero (secondi)…"), () => PopForm(at, L.Tr("Aggiungi un nero"), new[] { ("5", "secondi") }, L.Tr("Schermo nero tra due elementi, senza scritte."), v => c.Cmd("addblack", ("secs", Ui.ParseNum(v[0]) ?? 5)))));
         m.Items.Add(Mi(L.Tr("Intervallo con conto alla rovescia…"), () => PopForm(at, L.Tr("Aggiungi un intervallo"), new[] { ("10", "minuti"), (L.Tr("Intervallo"), "") }, L.Tr("Sullo schermo della sala compaiono il testo e il tempo che manca."), v => c.Cmd("addpause", ("secs", (Ui.ParseNum(v[0]) ?? 10) * 60), ("text", v[1])))));

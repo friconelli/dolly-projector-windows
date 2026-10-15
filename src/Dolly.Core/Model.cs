@@ -19,15 +19,28 @@ public static class Model
     };
     public static readonly string[] ReadProps = Props.Keys.ToArray();
 
+    /// I film di un percorso: un file mp4/avi/mkv, un CPL di DCP, una cartella-DCP (un elemento per ogni versione del film) oppure una cartella di film (file e sottocartelle-DCP, in ordine di nome).
     public static List<string> VideosIn(string path)
     {
         if (Directory.Exists(path))
         {
-            var names = Directory.GetFiles(path).Select(Path.GetFileName).Where(n => n != null).Select(n => n!).ToList();
+            var dcp = Dcp.Cpls(path); if (dcp.Count > 0) return dcp;
+            var names = Directory.GetFileSystemEntries(path).Select(Path.GetFileName).Where(n => n != null).Select(n => n!).ToList();
             names.Sort(string.CompareOrdinal);
-            return names.Where(n => !n.StartsWith('.') && VideoExt.Contains(Path.GetExtension(n).TrimStart('.').ToLowerInvariant())).Select(n => Path.Combine(path, n)).ToList();
+            var res = new List<string>();
+            foreach (var n in names.Where(n => !n.StartsWith('.')))
+            {
+                var p = Path.Combine(path, n);
+                if (Directory.Exists(p)) res.AddRange(Dcp.Cpls(p));
+                else if (VideoExt.Contains(Path.GetExtension(n).TrimStart('.').ToLowerInvariant())) res.Add(p);
+            }
+            return res;
         }
-        if (File.Exists(path) && VideoExt.Contains(Path.GetExtension(path).TrimStart('.').ToLowerInvariant())) return new() { path };
+        if (File.Exists(path))
+        {
+            if (Dcp.IsCplPath(path)) return Dcp.SniffCpl(path) ? new() { path } : new();
+            if (VideoExt.Contains(Path.GetExtension(path).TrimStart('.').ToLowerInvariant())) return new() { path };
+        }
         return new();
     }
 }
@@ -59,5 +72,5 @@ public sealed class Item
     };
     public string Title => Kind == "pausa" ? (Text.Length == 0 ? L.Tr("Pausa") : Text)
         : Kind == "nero" ? L.Trf("Nero (%@ s)", Secs == Math.Round(Secs) ? ((int)Secs).ToString() : Secs.ToString(System.Globalization.CultureInfo.InvariantCulture))
-        : System.IO.Path.GetFileName(Path);
+        : Dcp.IsCplPath(Path) ? Dcp.Title(Path) + ".dcp" : System.IO.Path.GetFileName(Path);
 }
