@@ -21,7 +21,44 @@ public sealed class Ctx
         E.Send(o);
     }
     public void Set(string prop, object? v) => Cmd("set", ("p", prop), ("v", v));
-    public void SetItem(int i, string key, object? v) => Cmd("setitem", ("i", i), (key, v));
+    /// Un campo di un elemento; se l'elemento fa parte di una selezione di più, vale per tutti i selezionati.
+    public void SetItem(int i, string key, object? v)
+    {
+        var targets = Selection.Contains(i) && Selection.Count > 1 ? Selection.OrderBy(x => x).ToList() : new List<int> { i };
+        foreach (var k in targets) Cmd("setitem", ("i", k), (key, v));
+    }
+
+    // MARK: selezione nella scaletta (thread dell'interfaccia)
+    public HashSet<int> Selection { get; private set; } = new();
+    int? anchor;
+    public event Action? SelectionChanged;
+    public void SetSelection(IEnumerable<int> s) { Selection = s.ToHashSet(); SelectionChanged?.Invoke(); }
+    /// Clic su una riga: semplice = solo quella; Ctrl = aggiunge/toglie; Maiusc = intervallo dall'ultima scelta (con Ctrl si aggiunge all'esistente).
+    public void TapSelect(int i, bool ctrl, bool shift)
+    {
+        if (shift && anchor is int a) { var r = Enumerable.Range(Math.Min(a, i), Math.Abs(a - i) + 1); SetSelection(ctrl ? Selection.Union(r) : r); }
+        else if (ctrl) { var s = Selection.ToHashSet(); if (!s.Remove(i)) s.Add(i); anchor = i; SetSelection(s); }
+        else { anchor = i; SetSelection(new[] { i }); }
+    }
+    public void SelectAll() { anchor = 0; SetSelection(Enumerable.Range(0, S.Items.Count)); }
+    /// Toglie dalla scaletta gli elementi selezionati (dopo conferma).
+    public void RemoveSelected()
+    {
+        var t = Selection.OrderBy(x => x).ToList(); if (t.Count == 0) return;
+        if (!Confirm(t.Count == 1 ? L.Tr("Togliere dalla scaletta?") : L.Trf("Togliere %d elementi dalla scaletta?", t.Count))) return;
+        SetSelection(Array.Empty<int>()); Cmd("removemany", ("indices", U.Arr(t.Cast<object?>())));
+    }
+    /// Sposta di una posizione ogni elemento selezionato (restano distanziati come sono; quelli già in cima/in fondo restano fermi).
+    public void MoveSelection(int dlt)
+    {
+        int n = S.Items.Count; var now = new HashSet<int>();
+        foreach (var i in dlt < 0 ? Selection.OrderBy(x => x) : Selection.OrderByDescending(x => x))
+        {
+            if (i < 0 || i >= n) continue; int t = i + dlt;
+            if (t >= 0 && t < n && !now.Contains(t)) { Cmd("move", ("i", i), ("d", dlt)); now.Add(t); } else now.Add(i);
+        }
+        SetSelection(now);
+    }
 
     public bool Confirm(string msg, string? ok = null)
         => MessageBox.Show(Owner!, msg, "Dolly Projector", MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK;

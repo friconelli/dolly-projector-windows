@@ -401,6 +401,18 @@ public sealed class Engine
         int Fix(int k) => k == f ? t : (f < t && k > f && k <= t) ? k - 1 : (f > t && k >= t && k < f) ? k + 1 : k;
         idx = Fix(idx); next = Fix(next); sel = Fix(sel);
     }
+    /// Toglie più elementi insieme (indici qualunque, anche ripetuti o fuori range). Si va dal fondo, così gli indici restano validi.
+    void RemoveItems(IEnumerable<int> list) { foreach (var i in list.Distinct().Where(i => i >= 0 && i < items.Count).OrderByDescending(i => i)) RemoveItem(i); }
+    /// Sposta più elementi insieme (mantengono l'ordine reciproco): il blocco va dopo (after) o prima dell'elemento t, che non deve far parte del blocco.
+    void ReorderItems(IEnumerable<int> from, int t, bool after)
+    {
+        var order = Model.BlockOrder(items.Count, from, t, after); if (order == null) return;
+        var inv = new Dictionary<int, int>(); for (int n = 0; n < order.Count; n++) inv[order[n]] = n;
+        items = order.Select(o => items[o]).ToList();
+        int Fix(int k) => k >= 0 && inv.TryGetValue(k, out var v) ? v : k;
+        idx = Fix(idx); next = Fix(next); sel = Fix(sel); splitDone = Fix(splitDone);
+    }
+    static List<int> Ints(JsonNode? n) => (n as JsonArray)?.Select(x => x.I()).Where(x => x != null).Select(x => x!.Value).ToList() ?? new();
     void ImportM3U(string path)
     {
         var baseDir = Path.GetDirectoryName(path) ?? "";
@@ -492,6 +504,8 @@ public sealed class Engine
             case "remove": RemoveItem(d.Get("i").I() ?? -1); break;
             case "move": MoveItem(d.Get("i").I() ?? -1, d.Get("d").I() ?? 0); break;
             case "reorder": ReorderItem(d.Get("from").I() ?? -1, d.Get("to").I() ?? -1); break;
+            case "removemany": RemoveItems(Ints(d.Get("indices"))); break;
+            case "reordermany": ReorderItems(Ints(d.Get("from")), d.Get("to").I() ?? -1, d.Get("after").B() ?? false); break;
             case "clear": if (mode != "idle") StopAll(); items = new(); sel = 0; idx = -1; break;
             case "setitem": SetItem(d); break;
             case "preset_save":   // salva lo sfondo/testo/durata dell'elemento i come preset (stesso nome = sostituisce)

@@ -28,6 +28,7 @@ public sealed class ItemSettingsView : StackPanel
         Children.Clear(); refreshers = new();
         Children.Add(Ui.Text(it.Label, 15, FontWeights.SemiBold));
         void Add(UIElement e) { if (e is FrameworkElement fe) fe.Margin = new Thickness(fe.Margin.Left, fe.Margin.Top + 9, fe.Margin.Right, fe.Margin.Bottom); Children.Add(e); }
+        if (c.Selection.Contains(i) && c.Selection.Count > 1) Add(Ui.Text(L.Trf("Le modifiche valgono per i %d elementi selezionati", c.Selection.Count), 11.5, null, Theme.Accent, true));
         if (it.Kind == "pausa" || it.Kind == "nero")
         {
             if (it.Kind == "pausa") Add(Txt(L.Tr("Testo"), L.Tr("Intervallo"), x => x.Text, v => c.SetItem(i, "text", v)));

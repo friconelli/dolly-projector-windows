@@ -31,13 +31,24 @@ public sealed class ItemRow : Border
         Pop = new Popup { PlacementTarget = Gear, Placement = PlacementMode.Right, StaysOpen = false, AllowsTransparency = true, PopupAnimation = PopupAnimation.Fade };
         Grid.SetColumn(Gear, 4); g.Children.Add(Gear); g.Children.Add(Pop);
         Child = g;
-        MouseLeftButtonDown += (_, e) => { if (e.ClickCount == 2 && !grip.IsMouseOver && !Gear.IsMouseOver) { Play(); e.Handled = true; } };
+        MouseLeftButtonDown += (_, e) =>
+        {
+            if (grip.IsMouseOver || Gear.IsMouseOver) return;
+            if (e.ClickCount == 2) Play();
+            else c.TapSelect(I, (Keyboard.Modifiers & ModifierKeys.Control) != 0, (Keyboard.Modifiers & ModifierKeys.Shift) != 0);
+            e.Handled = true;
+        };
         MouseEnter += (_, _) => { if (Background == Brushes.Transparent) Background = Theme.Hover; }; MouseLeave += (_, _) => { if (Equals(Background, Theme.Hover)) Background = Brushes.Transparent; };
-        var cm = new ContextMenu();
-        cm.Items.Add(Mi(L.Tr("Avvia"), Play)); cm.Items.Add(Mi(L.Tr("Impostazioni…"), () => openGear(i))); cm.Items.Add(new Separator());
-        cm.Items.Add(Mi(L.Tr("Sposta su"), () => c.Cmd("move", ("i", i), ("d", -1)))); cm.Items.Add(Mi(L.Tr("Sposta giù"), () => c.Cmd("move", ("i", i), ("d", 1)))); cm.Items.Add(new Separator());
-        cm.Items.Add(Mi(L.Tr("Rimuovi dalla scaletta"), () => { if (c.Confirm(L.Tr("Togliere dalla scaletta?"))) c.Cmd("remove", ("i", i)); }));
-        ContextMenu = cm;
+        var cm = new ContextMenu(); ContextMenu = cm;
+        cm.Opened += (_, _) =>   // il menu si ricostruisce ogni volta: vale per la selezione (un clic destro su una riga non selezionata la seleziona)
+        {
+            if (!c.Selection.Contains(I)) c.TapSelect(I, false, false);
+            cm.Items.Clear(); int k = c.Selection.Count;
+            cm.Items.Add(Mi(L.Tr("Avvia"), Play)); cm.Items.Add(Mi(L.Tr("Impostazioni…"), () => openGear(i))); cm.Items.Add(new Separator());
+            cm.Items.Add(Mi(L.Tr("Sposta su"), () => c.MoveSelection(-1))); cm.Items.Add(Mi(L.Tr("Sposta giù"), () => c.MoveSelection(1)));
+            cm.Items.Add(Mi(L.Tr("Seleziona tutto"), c.SelectAll)); cm.Items.Add(new Separator());
+            cm.Items.Add(Mi(k > 1 ? L.Trf("Rimuovi %d elementi dalla scaletta", k) : L.Tr("Rimuovi dalla scaletta"), c.RemoveSelected));
+        };
     }
     static MenuItem Mi(string h, Action a) { var m = new MenuItem { Header = h }; m.Click += (_, _) => a(); return m; }
     void Play() { if (c.S.Mode == "idle") c.Cmd("play", ("i", I)); else if (c.Confirm(L.Tr("Cambiare? Quello in corso si interrompe."))) c.Cmd("play", ("i", I)); }
@@ -54,7 +65,8 @@ public sealed class ItemRow : Border
         var cp = Caption(s, it); cap.Text = cp; cap.Visibility = cp.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         playBox.Background = cur ? Theme.Cue : Theme.Hover;
         playGlyph.Text = cur ? "" : it.Kind == "pausa" ? "" : it.Kind == "nero" ? "" : ""; playGlyph.Foreground = cur ? Brushes.White : Theme.Muted;
-        Background = cur ? Theme.CueSoft : Brushes.Transparent; BorderBrush = nxt ? Theme.Orange : Brushes.Transparent;
+        bool chosen = c.Selection.Contains(I);
+        Background = chosen ? Theme.AccentSoft : cur ? Theme.CueSoft : Brushes.Transparent; BorderBrush = chosen ? Theme.Accent : nxt ? Theme.Orange : Brushes.Transparent;
         loopIcon.Visibility = it.Loop != 0 ? Visibility.Visible : Visibility.Collapsed; loopIcon.ToolTip = it.Loop < 0 ? L.Tr("Si ripete all'infinito") : L.Trf("Si ripete %d volte", it.Loop);
         if (Pop.IsOpen) RefreshPopup(s, it);
     }
@@ -95,6 +107,7 @@ public sealed class ScalettaPanel : Grid
     public ScalettaPanel(Ctx c)
     {
         this.c = c; Background = Theme.Panel;
+        c.SelectionChanged += () => Dispatcher.BeginInvoke(() => { for (int i = 0; i < rows.Count && i < s.Items.Count; i++) rows[i].Update(s, s.Items[i]); });
         RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); RowDefinitions.Add(new RowDefinition()); RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         // intestazione: nome + menu
         var top = new Grid { Margin = new Thickness(14, 8, 8, 8) }; top.ColumnDefinitions.Add(new ColumnDefinition()); top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -109,7 +122,8 @@ public sealed class ScalettaPanel : Grid
         empty.Children.Add(Ui.Glyph("", 30, Theme.Faint)); empty.Children.Add(new TextBlock { Text = L.Tr("Scaletta vuota"), Foreground = Theme.Muted, Margin = new Thickness(0, 8, 0, 4), HorizontalAlignment = HorizontalAlignment.Center });
         empty.Children.Add(new TextBlock { Text = L.Tr("Aggiungi film con il pulsante + qui sotto, oppure trascinali qui da Esplora risorse."), Foreground = Theme.Faint, FontSize = 11.5, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, MaxWidth = 250 });
         var host = new Grid { Background = Brushes.Transparent, AllowDrop = true };
-        list.Margin = new Thickness(8, 6, 8, 6);
+        list.Margin = new Thickness(8, 6, 8, 6); list.Background = Brushes.Transparent;
+        list.MouseLeftButtonDown += (_, e) => { if (c.Selection.Count > 0) c.SetSelection(Array.Empty<int>()); };   // clic su un punto vuoto: deseleziona (le righe fermano l'evento)
         scroll = new ScrollViewer { Content = list, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         host.Children.Add(scroll); host.Children.Add(empty);
         host.DragOver += OnDragOver; host.DragLeave += (_, _) => ClearMarks(); host.Drop += OnDrop;
@@ -194,12 +208,22 @@ public sealed class ScalettaPanel : Grid
         if (start) dragFrom = i;
         dragTo = RowAt(e.GetPosition(list)); ClearMarks();
         if (dragTo != dragFrom && dragTo >= 0 && dragTo < rows.Count) rows[dragTo].SetDropMark(dragTo < dragFrom, dragTo > dragFrom);
-        if (dragFrom >= 0 && dragFrom < rows.Count) rows[dragFrom].Opacity = .55;
+        if (dragFrom >= 0 && dragFrom < rows.Count) { rows[dragFrom].Opacity = .55; if (c.Selection.Count > 1 && c.Selection.Contains(dragFrom)) foreach (var k in c.Selection) if (k < rows.Count) rows[k].Opacity = .55; }
     }
     void GripEnd(int i)
     {
         int f = dragFrom, t = dragTo; dragFrom = dragTo = -1; ClearMarks();
-        if (f >= 0 && t >= 0 && f != t) c.Cmd("reorder", ("from", f), ("to", t));
+        if (f < 0 || t < 0 || f == t) return;
+        if (c.Selection.Contains(f) && c.Selection.Count > 1)   // trascinando un elemento selezionato si sposta tutto il blocco
+        {
+            var ch = c.Selection.ToList(); var order = Model.BlockOrder(s.Items.Count, ch, t, t > f);
+            if (order != null)
+            {
+                c.Cmd("reordermany", ("from", U.Arr(ch.Cast<object?>())), ("to", t), ("after", t > f));
+                c.SetSelection(order.Select((o, n) => (o, n)).Where(x => ch.Contains(x.o)).Select(x => x.n));
+            }
+        }
+        else { c.Cmd("reorder", ("from", f), ("to", t)); c.SetSelection(Array.Empty<int>()); }
     }
     void ClearMarks() { foreach (var r in rows) { r.SetDropMark(false, false); if (dragFrom < 0) r.Opacity = 1; } dropLine.Visibility = Visibility.Collapsed; }
 

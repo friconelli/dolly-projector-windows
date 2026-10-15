@@ -20,6 +20,17 @@ public static class Model
     public static readonly string[] ReadProps = Props.Keys.ToArray();
 
     /// I film di un percorso: un file mp4/avi/mkv, un CPL di DCP, una cartella-DCP (un elemento per ogni versione del film) oppure una cartella di film (file e sottocartelle-DCP, in ordine di nome).
+    /// Nuovo ordine (vecchi indici) dopo aver spostato un blocco di elementi, che mantengono l'ordine reciproco, subito dopo (after) o prima dell'elemento t. null se non cambia nulla o se t fa parte del blocco.
+    public static List<int>? BlockOrder(int count, IEnumerable<int> chosen, int t, bool after)
+    {
+        var ch = chosen.Where(i => i >= 0 && i < count).ToHashSet();
+        if (ch.Count == 0 || t < 0 || t >= count || ch.Contains(t)) return null;
+        var moved = ch.OrderBy(i => i).ToList(); var rest = Enumerable.Range(0, count).Where(i => !ch.Contains(i)).ToList();
+        int p = rest.Count(i => after ? i <= t : i < t);
+        var order = rest.Take(p).Concat(moved).Concat(rest.Skip(p)).ToList();
+        return order.SequenceEqual(Enumerable.Range(0, count)) ? null : order;
+    }
+
     public static List<string> VideosIn(string path)
     {
         if (Directory.Exists(path))

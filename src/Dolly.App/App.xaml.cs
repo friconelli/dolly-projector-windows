@@ -19,7 +19,7 @@ public partial class App : Application
         if (!first) { MessageBox.Show(L.Tr("Dolly Projector è già aperto."), "Dolly Projector"); Shutdown(); return; }
         Theme.Init();
         DispatcherUnhandledException += (_, a) => { U.Log("errore non gestito:", a.Exception); a.Handled = true; };
-        if (AppState.Folder == null && !ChooseFolder(null)) { Shutdown(); return; }
+        // la cartella dei film è facoltativa: senza, l'app parte con la scaletta vuota (i film si aggiungono dal pulsante + o trascinandoli)
         bool unclean = File.Exists(Marker); try { File.WriteAllText(Marker, ""); } catch { }
         win = new MainWindow(ctx); MainWindow = win; win.Closing += OnClosing; win.Show();
         StartEngine(unclean, false);
@@ -43,7 +43,7 @@ public partial class App : Application
     /// Il player può impiegare qualche secondo ad avviarsi: la finestra c'è subito.
     void StartEngine(bool autoresume, bool resetPlaylist)
     {
-        var f = AppState.Folder; if (f == null) { win.SetStarting(false); return; }
+        var f = AppState.Folder ?? "";
         win.SetStarting(true);
         bool windowed = AppState.WindowedMode; int screen = AppState.ScreenIndex; var mpv = FindMpv();
         Task.Run(() =>
@@ -78,8 +78,9 @@ public partial class App : Application
     {
         var m = ctx.S.Mode;
         if ((m == "playing" || m == "wait" || m == "gap") && !ctx.Confirm(L.Tr("Cambiare cartella interrompe la proiezione in corso e la scaletta riparte dai film della nuova cartella. Continuare?"))) return;
+        bool had = AppState.Folder != null;   // la prima volta che si sceglie una cartella la scaletta già costruita resta com'è
         if (!ChooseFolder(w)) return;
-        StopEngine(); Task.Delay(400).ContinueWith(_ => Dispatcher.BeginInvoke(() => StartEngine(false, true)));
+        StopEngine(); Task.Delay(400).ContinueWith(_ => Dispatcher.BeginInvoke(() => StartEngine(false, had)));
     }
 
     void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)

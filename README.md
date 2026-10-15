@@ -12,6 +12,9 @@ Versione Windows di [Dolly Projector](https://www.dollyprojector.app): regia di 
 ## DCP
 Come nella versione Mac, Dolly proietta i DCP non cifrati (Aggiungi → *DCP (cartella)…*): dal CPL costruisce una lista di montaggio per mpv con video e audio di tutti i reel e un SRT con i sottotitoli di testo. Dettagli, limiti e collaudo (`tools/make_test_dcp.py`) nel README di [dolly-projector](https://github.com/friconelli/dolly-projector). Il codice è in `src/Dolly.Core/Dcp.cs`.
 
+## Scaletta: avvio senza cartella e selezione multipla
+Come nella versione Mac: l'app parte anche senza cartella dei film (scaletta vuota) e nella scaletta si selezionano più elementi (clic, Ctrl+clic, Maiusc+clic, Ctrl+A, Esc; Canc li toglie; il blocco si sposta trascinando la maniglia o dal menu del clic destro; le impostazioni valgono per tutti i selezionati). Dettagli nel README di [dolly-projector](https://github.com/friconelli/dolly-projector). Azioni del motore: `removemany` e `reordermany`.
+
 ## Compilare
 Serve il .NET SDK 9 (da Mac o Windows; da Mac il progetto WPF si compila grazie a `EnableWindowsTargeting`).
 

@@ -69,16 +69,16 @@ public sealed class Inspector : Grid
             for (int i = 0; i < seg.Count; i++) { bool on = defsubs[i].Item1 == s.DefSub; seg[i].Background = on ? Theme.Accent : Brushes.Transparent; ((TextBlock)seg[i].Child).Foreground = on ? Brushes.White : Theme.Text; }
             desc.Text = s.DefSub switch { "file" => L.Tr("Si accende la traccia che il file indica come predefinita."), "none" => L.Tr("Nessun sottotitolo, a meno che un film non ne chieda."), "forced" => L.Tr("Solo i sottotitoli “forzati”: le traduzioni dei dialoghi stranieri."), _ => L.Tr("Sottotitoli completi nella lingua dell’audio.") };
         });
-        var folderName = Ui.Text("", 13); var lib = new StackPanel { Visibility = Visibility.Collapsed }; bool libOpen = false; var libToggle = new Button { Content = L.Tr("Mostra l'elenco dei film"), HorizontalAlignment = HorizontalAlignment.Left, BorderThickness = new Thickness(0), Background = Brushes.Transparent, Foreground = Theme.Accent, Padding = new Thickness(0) };
+        var folderName = Ui.Text("", 13); var chgBtn = new Button(); var lib = new StackPanel { Visibility = Visibility.Collapsed }; bool libOpen = false; var libToggle = new Button { Content = L.Tr("Mostra l'elenco dei film"), HorizontalAlignment = HorizontalAlignment.Left, BorderThickness = new Thickness(0), Background = Brushes.Transparent, Foreground = Theme.Accent, Padding = new Thickness(0) };
         libToggle.Click += (_, _) => { libOpen = !libOpen; lib.Visibility = libOpen ? Visibility.Visible : Visibility.Collapsed; libToggle.Content = libOpen ? L.Tr("Nascondi l'elenco") : L.Tr("Mostra l'elenco dei film"); };
         string libSig = "";
         updaters.Add(s =>
         {
-            folderName.Text = System.IO.Path.GetFileName(s.Folder.TrimEnd('\\', '/')) is { Length: > 0 } n ? n : s.Folder;
+            folderName.Text = s.Folder.Length == 0 ? L.Tr("Nessuna cartella") : System.IO.Path.GetFileName(s.Folder.TrimEnd('\\', '/')) is { Length: > 0 } n ? n : s.Folder; folderName.Foreground = s.Folder.Length == 0 ? Theme.Muted : Theme.Text; chgBtn.Content = s.Folder.Length == 0 ? L.Tr("Scegli…") : L.Tr("Cambia…");
             var sig = string.Join("|", s.Lib); if (sig == libSig) return; libSig = sig; lib.Children.Clear();
             for (int i = 0; i < s.Lib.Count; i++) { int ix = i; var g = new Grid(); g.ColumnDefinitions.Add(new ColumnDefinition()); g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); var t = Ui.Text(System.IO.Path.GetFileNameWithoutExtension(s.Lib[i]), 12.5); var a = Ui.IconBtn("", L.Tr("Aggiungi alla scaletta"), () => c.Cmd("addlib", ("i", ix)), 12); Grid.SetColumn(a, 1); g.Children.Add(t); g.Children.Add(a); lib.Children.Add(g); }
         });
-        var chg = Ui.Btn(L.Tr("Cambia…"), () => Main?.ChangeFolder(), L.Tr("La scaletta riparte dai film della nuova cartella")); var frow = new Grid(); frow.ColumnDefinitions.Add(new ColumnDefinition()); frow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); Grid.SetColumn(chg, 1); frow.Children.Add(folderName); frow.Children.Add(chg);
+        var chg = chgBtn; chg.Content = L.Tr("Cambia…"); chg.Padding = new Thickness(12, 5, 12, 5); chg.MinHeight = 28; chg.ToolTip = L.Tr("La scaletta riparte dai film della nuova cartella"); chg.Click += (_, _) => Main?.ChangeFolder(); var frow = new Grid(); frow.ColumnDefinitions.Add(new ColumnDefinition()); frow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); Grid.SetColumn(chg, 1); frow.Children.Add(folderName); frow.Children.Add(chg);
         return new UIElement[]
         {
             Ui.Card(L.Tr("Nero e avanzamento"),

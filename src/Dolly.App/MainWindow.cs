@@ -129,6 +129,10 @@ public sealed class MainWindow : Window
     {
         if (c.E == null) return;
         if (Keyboard.FocusedElement is TextBox || Keyboard.FocusedElement is ComboBox { IsEditable: true }) return;   // si sta scrivendo in un campo
+        // selezione nella scaletta: Ctrl+A tutto, Esc deseleziona, Canc toglie i selezionati
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.A) { c.SelectAll(); e.Handled = true; return; }
+        if (e.Key == Key.Escape && c.Selection.Count > 0) { c.SetSelection(Array.Empty<int>()); e.Handled = true; return; }
+        if (e.Key == Key.Delete && c.Selection.Count > 0 && (Keyboard.Modifiers & ModifierKeys.Alt) == 0) { c.RemoveSelected(); e.Handled = true; return; }
         if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) != 0) return;
         bool big = (Keyboard.Modifiers & ModifierKeys.Shift) != 0; var s = c.S;
         switch (e.Key)
